@@ -1,12 +1,13 @@
-from flask import Flask, render_template, jsonify, request, url_for
-from bokeh.plotting import figure
-from bokeh.embed import components
-from bokeh.resources import INLINE
-from bokeh.models import ColumnDataSource, AjaxDataSource
-from bokeh.models import CustomJS, Slider, Select
-from bokeh.layouts import widgetbox, column
 import json
 import math
+
+from bokeh.embed import components
+from bokeh.layouts import column, widgetbox
+from bokeh.models import (AjaxDataSource, ColumnDataSource, CustomJS, Select,
+                          Slider)
+from bokeh.plotting import figure
+from bokeh.resources import INLINE
+from flask import Flask, jsonify, render_template, request, url_for
 
 # Some parts of the code was addopted from https://stackoverflow.com/questions/37083998/flask-bokeh-ajaxdatasource
 
@@ -32,12 +33,12 @@ def home():
     callback = CustomJS(args=dict(source=source), code="""
         var data = source.data;
         var f = cb_obj.value
-        x = data['x']
-        y = data['y']
-        for (i = 0; i < x.length; i++) {
+        var x = data['x']
+        var y = data['y']
+        for (var i = 0; i < x.length; i++) {
             y[i] = Math.pow(x[i], f)
         }
-        source.trigger('change');
+        source.change.emit();
     """)
 
     slider = Slider(start=0.1, end=4, value=1, step=.1, title="power")
@@ -80,7 +81,7 @@ def ajax():
         dataType: 'json',
         success: function (response) {
             plot_data['y'] = response["option"];
-            source.trigger('change');
+            source.change.emit();
         },
         error: function() {
             alert("An error occured!");
@@ -89,9 +90,8 @@ def ajax():
     """)
 
     select = Select(value='one',
-                    options=['one', 'two', 'three'],
-                    callback=callback)
-
+                    options=['one', 'two', 'three'])
+    select.js_on_change('value', callback)
     layout = column(widgetbox(select, width=100), plot)
     script, div = components(layout, INLINE)
     return jsonify(script=script,
